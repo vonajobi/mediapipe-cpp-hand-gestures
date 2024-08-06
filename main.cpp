@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <WinDNS.h>
 
 #include "mediapipe/framework/calculator_framework.h"
 #include "mediapipe/framework/calculator_graph.h"
@@ -21,18 +22,19 @@
 #include "mediapipe/framework/port/opencv_imgproc_inc.h"
 #include "absl/status/status.h"
 
-#include "serial/serial.h"
+// #include "serial/serial.h"
+
 
 absl::Status InitializeGraph(const std::string& pathGraph, mediapipe::CalculatorGraph& graph) {
     std::string protoG;
-    MP_RETURN_IF_ERROR(mediapipe::file::GetContents(pathGraph, &protoG));
+    mediapipe::MP_RETURN_IF_ERROR(mediapipe::file::GetContents(pathGraph, &protoG));
     
     mediapipe::CalculatorGraphConfig config;
     if (!mediapipe::ParseTextProto(protoG, &config)) {
         return absl::InternalError("Cannot parse the graph config !");
     }
 
-    MP_RETURN_IF_ERROR(graph.Initialize(config));
+    mediapipe::MP_RETURN_IF_ERROR(graph.Initialize(config));
     return absl::OkStatus();
 }
 
@@ -64,7 +66,7 @@ absl::Status RunGraph(mediapipe::CalculatorGraph& graph, std::atomic<bool>& flag
             mediapipe::ImageFormat::SRGB, frameInRGB.cols, frameInRGB.rows, mediapipe::ImageFrame::kDefaultAlignmentBoundary);
         frameInRGB.copyTo(mediapipe::formats::MatView(inputFrame.get()));
 
-        MP_RETURN_IF_ERROR(graph.AddPacketToInputStream("in", mediapipe::Adopt(inputFrame.release()).At(mediapipe::Timestamp(i))));
+        mediapipe::MP_RETURN_IF_ERROR(graph.AddPacketToInputStream("in", mediapipe::Adopt(inputFrame.release()).At(mediapipe::Timestamp(i))));
 
         if (27 == cv::waitKey(1) || 8 == cv::waitKey(1)) {
             std::cout << "It's time to quit!" << std::endl;
@@ -72,14 +74,14 @@ absl::Status RunGraph(mediapipe::CalculatorGraph& graph, std::atomic<bool>& flag
         }
     }
 
-    MP_RETURN_IF_ERROR(graph.CloseInputStream("in"));
-    MP_RETURN_IF_ERROR(graph.WaitUntilDone());
+    mediapipe::MP_RETURN_IF_ERROR(graph.CloseInputStream("in"));
+    mediapipe::MP_RETURN_IF_ERROR(graph.WaitUntilDone());
     return absl::OkStatus();
 }
 
 absl::Status Run(const std::string& pathGraph) {
     mediapipe::CalculatorGraph graph;
-    MP_RETURN_IF_ERROR(InitializeGraph(pathGraph, graph));
+    mediapipe::MP_RETURN_IF_ERROR(InitializeGraph(pathGraph, graph));
 
     std::mutex mutexImshow;
     std::atomic<bool> flagStop(false);
@@ -94,15 +96,15 @@ absl::Status Run(const std::string& pathGraph) {
         return absl::OkStatus();
     };
 
-    MP_RETURN_IF_ERROR(graph.ObserveOutputStream("out", cb));
-    MP_RETURN_IF_ERROR(graph.StartRun({}));
+    mediapipe::MP_RETURN_IF_ERROR(graph.ObserveOutputStream("out", cb));
+    mediapipe::MP_RETURN_IF_ERROR(graph.StartRun({}));
 
     // Add poller for landmark_lists
     mediapipe::OutputStreamPoller poller;
-    MP_RETURN_IF_ERROR(graph.AddOutputStreamPoller("landmark_lists", &poller));
+    mediapipe::MP_RETURN_IF_ERROR(graph.AddOutputStreamPoller("landmark_lists", &poller));
     
     // Run the graph
-    MP_RETURN_IF_ERROR(RunGraph(graph, flagStop, mutexImshow));
+    mediapipe::MP_RETURN_IF_ERROR(RunGraph(graph, flagStop, mutexImshow));
     
     // Get output packets
     mediapipe::Packet packet;
